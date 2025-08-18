@@ -2,15 +2,34 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 )
 
+var fileServer = http.FileServer(http.Dir("./ui/static/"))
+
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Server", "Go")
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	fmt.Fprint(w, `{"data": "Hello from Snippetbox"}`)
+	files := []string{
+		"./ui/html/base.tmpl",
+		"./ui/html/pages/home.tmpl",
+		"./ui/html/partials/nav.tmpl",
+	}
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err = ts.ExecuteTemplate(w, "base", nil)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 
 }
 
@@ -37,4 +56,5 @@ func registerMux(mux *http.ServeMux) {
 	mux.HandleFunc("GET /snippet/view/{id}", snippetView)
 	mux.HandleFunc("GET /snippet/create", snippetCreate)
 	mux.HandleFunc("POST /snippet/create", snippetCreatePost)
+	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 }

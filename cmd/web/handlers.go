@@ -3,58 +3,66 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/mike-jacks/snippetbox/config"
 )
 
-var fileServer = http.FileServer(http.Dir("./ui/static/"))
+func Home(app *config.Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Server", "Go")
 
-func home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Server", "Go")
+		files := []string{
+			"./ui/html/base.tmpl",
+			"./ui/html/pages/home.tmpl",
+			"./ui/html/partials/nav.tmpl",
+		}
+		ts, err := template.ParseFiles(files...)
+		if err != nil {
+			app.Logger.Error("Internal Server Error: " + err.Error())
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/pages/home.tmpl",
-		"./ui/html/partials/nav.tmpl",
-	}
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = ts.ExecuteTemplate(w, "base", nil)
-	if err != nil {
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-
+		err = ts.ExecuteTemplate(w, "base", nil)
+		if err != nil {
+			app.Logger.Error(err.Error())
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	})
 }
 
-func snippetView(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || id < 1 {
-		http.NotFound(w, r)
-		return
-	}
-	fmt.Fprintf(w, "Display a specific snippet with ID %d...", id)
+func SnippetView(app *config.Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil || id < 1 {
+			app.Logger.Error(err.Error())
+			http.NotFound(w,r)
+			return
+		}
+		fmt.Fprintf(w, "Display a specific sinppet with ID %d...", id)
+	})
 }
 
-func snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display a form for creating a new snippet..."))
+func SnippetCreate(app *config.Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Display a form for creating a new snippet...")
+	})
 }
 
-func snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Save a new snippet..."))
+func SnippetCreatePost(app *config.Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprintf(w, "Save a new snippet...")
+	})
 }
 
-func registerMux(mux *http.ServeMux) {
-	mux.HandleFunc("GET /{$}", home)
-	mux.HandleFunc("GET /snippet/view/{id}", snippetView)
-	mux.HandleFunc("GET /snippet/create", snippetCreate)
-	mux.HandleFunc("POST /snippet/create", snippetCreatePost)
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
+
+func registerMux(mux *http.ServeMux, app *config.Application) {
+	mux.Handle("GET /{$}", Home(app))
+	mux.Handle("GET /snippet/view/{id}", SnippetView(app))
+	mux.Handle("GET /snippet/create", SnippetCreate(app))
+	mux.Handle("POST /snippet/create", SnippetCreatePost(app))
+	mux.Handle("GET /static/", http.StripPrefix("/static", app.FileServer))
 }

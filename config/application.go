@@ -1,9 +1,9 @@
 package config
 
 import (
+	"database/sql"
 	"log/slog"
 	"net/http"
-	"os"
 	"runtime/debug"
 )
 
@@ -12,6 +12,7 @@ type ApplicaitonInterface interface {
 	ClientError(w http.ResponseWriter, status int)
 	Logger() *slog.Logger
 	Config() Config
+	DB() *sql.DB
 }
 
 type Application struct {
@@ -19,20 +20,17 @@ type Application struct {
 	logger     *slog.Logger
 	fileServer http.Handler
 	handler    *Handler
+	db         *sql.DB
 }
 
-func NewApplication(config Config) *Application {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
-		AddSource: true,
-	}))
-
+func NewApplication(config Config, db *sql.DB, logger *slog.Logger) *Application {
 	fileServer := http.FileServer(http.Dir(config.StaticDir))
 
 	app := &Application{
 		config:     config,
 		logger:     logger,
 		fileServer: fileServer,
+		db:         db,
 	}
 
 	app.handler = &Handler{
@@ -56,6 +54,10 @@ func (app *Application) FileServer() http.Handler {
 
 func (app *Application) Handler() *Handler {
 	return app.handler
+}
+
+func (app *Application) DB() *sql.DB {
+	return app.db
 }
 
 func (app *Application) ServerError(w http.ResponseWriter, r *http.Request, err error) {

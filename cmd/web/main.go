@@ -20,16 +20,13 @@ func main() {
 
 	app := config.NewApplication(cfg)
 
-	if app.Config.Verbose {
-		app.Logger.Info("Verbose Logging Enabled")
+	if app.Config().Verbose {
+		app.Logger().Info("Verbose Logging Enabled")
 	}
 
-	mux := http.NewServeMux()
-	registerMux(mux, app)
+	app.Logger().Info("starting server", "addr", fmt.Sprintf("http://localhost%s", app.Config().Addr))
 
-	app.Logger.Info("starting server", "addr", fmt.Sprintf("http://localhost%s", app.Config.Addr))
-
-	err := http.ListenAndServe(app.Config.Addr, mux)
-	app.Logger.Error(err.Error())
+	err := http.ListenAndServe(app.Config().Addr, app.Routes())
+	app.Logger().Error(err.Error())
 	os.Exit(1)
 }

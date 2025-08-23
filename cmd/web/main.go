@@ -15,6 +15,7 @@ func main() {
 	flag.StringVar(&cfg.Addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&cfg.StaticDir, "static-dir", "./ui/static", "Path to static assets")
 	flag.BoolVar(&cfg.Verbose, "verbose", false, "If program is verbose")
+	flag.BoolVar(&cfg.Trace, "trace", false, "If add trace to logger")
 	flag.Parse()
 
 	app := config.NewApplication(cfg)

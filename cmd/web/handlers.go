@@ -20,15 +20,14 @@ func Home(app *config.Application) http.Handler {
 		}
 		ts, err := template.ParseFiles(files...)
 		if err != nil {
-			app.Logger.Error("Internal Server Error: " + err.Error())
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			app.ServerError(w,r,err)
 			return
 		}
 
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		err = ts.ExecuteTemplate(w, "base", nil)
 		if err != nil {
-			app.Logger.Error(err.Error())
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			app.ServerError(w,r,err)
 		}
 	})
 }
@@ -37,7 +36,7 @@ func SnippetView(app *config.Application) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil || id < 1 {
-			app.Logger.Error(err.Error())
+			if err != nil { app.Logger.Error(err.Error()) }
 			http.NotFound(w,r)
 			return
 		}
@@ -64,5 +63,5 @@ func registerMux(mux *http.ServeMux, app *config.Application) {
 	mux.Handle("GET /snippet/view/{id}", SnippetView(app))
 	mux.Handle("GET /snippet/create", SnippetCreate(app))
 	mux.Handle("POST /snippet/create", SnippetCreatePost(app))
-	mux.Handle("GET /static/", http.StripPrefix("/static", app.FileServer))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", app.FileServer))
 }

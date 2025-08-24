@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/mike-jacks/snippetbox/internal/models"
 )
 
 type ApplicaitonInterface interface {
@@ -12,7 +14,7 @@ type ApplicaitonInterface interface {
 	ClientError(w http.ResponseWriter, status int)
 	Logger() *slog.Logger
 	Config() Config
-	DB() *sql.DB
+	Snippets() *models.SnippetModel
 }
 
 type Application struct {
@@ -20,7 +22,7 @@ type Application struct {
 	logger     *slog.Logger
 	fileServer http.Handler
 	handler    *Handler
-	db         *sql.DB
+	snippets   *models.SnippetModel
 }
 
 func NewApplication(config Config, db *sql.DB, logger *slog.Logger) *Application {
@@ -30,7 +32,9 @@ func NewApplication(config Config, db *sql.DB, logger *slog.Logger) *Application
 		config:     config,
 		logger:     logger,
 		fileServer: fileServer,
-		db:         db,
+		snippets: &models.SnippetModel{
+			DB: db,
+		},
 	}
 
 	app.handler = &Handler{
@@ -56,8 +60,8 @@ func (app *Application) Handler() *Handler {
 	return app.handler
 }
 
-func (app *Application) DB() *sql.DB {
-	return app.db
+func (app *Application) Snippets() *models.SnippetModel {
+	return app.snippets
 }
 
 func (app *Application) ServerError(w http.ResponseWriter, r *http.Request, err error) {
@@ -74,6 +78,9 @@ func (app *Application) ServerError(w http.ResponseWriter, r *http.Request, err 
 	}
 
 	fields := make([]interface{}, 0, len(logFields)*2)
+	if value, exists := logFields["error"]; exists {
+		fields = append(fields, "error", value)
+	}
 	if value, exists := logFields["method"]; exists {
 		fields = append(fields, "method", value)
 	}
@@ -99,7 +106,7 @@ func (app *Application) Routes() *http.ServeMux {
 	mux.Handle("GET /snippet/view/{id}", app.Handler().SnippetView())
 	mux.Handle("GET /snippet/create", app.Handler().SnippetCreate())
 	mux.Handle("POST /snippet/create", app.Handler().SnippetCreatePost())
-	mux.Handle("GET /static/", http.StripPrefix("/static/", app.FileServer()))
+	mux.Handle("GET /static/", app.FileServer())
 
 	return mux
 }

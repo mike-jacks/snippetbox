@@ -67,7 +67,11 @@ func (h *Handler) SnippetView() http.Handler {
 			return
 		}
 
-		err = ts.ExecuteTemplate(w, "base", snippet)
+		data := templateData{
+			Snippet: snippet,
+		}
+
+		err = ts.ExecuteTemplate(w, "base", data)
 		if err != nil {
 			h.app.ServerError(w, r, err)
 		}
@@ -84,7 +88,7 @@ func (h *Handler) SnippetCreatePost() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		title := "0 snail"
 		content := "0 snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n- Kobayashi Issa"
-		expires := 7
+		expires := map[models.Interval]int {models.IntervalDays: 7}
 
 		id, err := h.app.Snippets().Insert(title, content, expires)
 		if err != nil {
